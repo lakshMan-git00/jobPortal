@@ -1,0 +1,56 @@
+# ------------------------------
+# Environment files
+# Keep .env.example committed
+# ------------------------------
+.env
+.env.*
+!.env.example
+
+# ------------------------------
+# Dependencies
+# ------------------------------
+/vendor
+/node_modules
+
+# ------------------------------
+# Build / runtime artifacts
+# ------------------------------
+/public/build
+/public/fonts-manifest.dev.json
+/public/hot
+/public/storage
+/storage/*.key
+/storage/pail
+
+# ------------------------------
+# Local database files
+# ------------------------------
+/database/*.sqlite
+
+# ------------------------------
+# Logs / caches
+# ------------------------------
+*.log
+.phpunit.result.cache
+/.phpunit.cache
+.phpactor.json
+
+# ------------------------------
+# Editor / local tool metadata
+# ------------------------------
+/.codex
+/.cursor/
+/.idea
+/.nova
+/.vscode
+/.zed
+_ide_helper.php
+
+# ------------------------------
+# Misc
+# ------------------------------
+/auth.json
+Homestead.json
+Homestead.yaml
+.DS_Store
+Thumbs.db

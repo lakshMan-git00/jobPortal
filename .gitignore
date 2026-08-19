@@ -1,0 +1,52 @@
+# ------------------------------
+# OS / Editor
+# ------------------------------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ------------------------------
+# Logs
+# ------------------------------
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ------------------------------
+# Environment files
+# Keep sample env files committed
+# ------------------------------
+.env
+.env.*
+!.env.example
+
+# ------------------------------
+# Frontend (Vercel)
+# ------------------------------
+/Frontend/node_modules/
+/Frontend/dist/
+/Frontend/dist-ssr/
+/Frontend/build/
+/Frontend/.vercel/
+/Frontend/coverage/
+/Frontend/.cache/
+/Frontend/.vite/
+/Frontend/.eslintcache
+/Frontend/*.tsbuildinfo
+
+# ------------------------------
+# Backend (Render)
+# ------------------------------
+/Backend/vendor/
+/Backend/node_modules/
+/Backend/public/build/
+/Backend/public/hot
+/Backend/public/storage
+/Backend/storage/*.key
+/Backend/storage/pail
+/Backend/database/*.sqlite

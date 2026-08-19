@@ -1,0 +1,68 @@
+# ------------------------------
+# Dependencies
+# ------------------------------
+node_modules/
+
+# ------------------------------
+# Build outputs
+# ------------------------------
+dist/
+dist-ssr/
+build/
+
+# ------------------------------
+# Vercel / deployment artifacts
+# ------------------------------
+.vercel/
+
+# ------------------------------
+# Environment and local-only config
+# Keep .env.example committed
+# ------------------------------
+.env
+.env.*
+!.env.example
+*.local
+
+# ------------------------------
+# Logs
+# ------------------------------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ------------------------------
+# Test and coverage artifacts
+# ------------------------------
+coverage/
+*.lcov
+
+# ------------------------------
+# Cache artifacts
+# ------------------------------
+.cache/
+.vite/
+.eslintcache
+*.tsbuildinfo
+
+# ------------------------------
+# Editor and IDE files
+# ------------------------------
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# ------------------------------
+# OS / misc
+# ------------------------------
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
