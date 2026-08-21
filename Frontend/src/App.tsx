@@ -23,8 +23,6 @@ function getJob(path: string) {
   return jobs.find((job) => job.slug === slug);
 }
 
-const ciTest = 'this should fail';
-
 function App() {
   const path = usePathname();
   const [role, setRole] = useState<Role>('guest');
