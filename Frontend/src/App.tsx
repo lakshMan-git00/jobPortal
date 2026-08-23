@@ -248,8 +248,10 @@ function NotFound() {
 function CheckHealth() {
   const [status, setStatus] = useState(false);
 
+  const frontendURL = import.meta.env.VITE_API_URL ?? '';
+
   const checkBackendHealth = async () => {
-    const response = await fetch('http://127.0.0.1:8000/health');
+    const response = await fetch(`${frontendURL}/health`);
     const data = await response.json();
     setStatus(data.status);
   };
