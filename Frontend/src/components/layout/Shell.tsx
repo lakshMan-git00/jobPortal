@@ -15,6 +15,7 @@ export function PublicHeader({ role, onRole }: { role: Role; onRole: (role: Role
     <header className="topbar">
       <Brand />
       <nav>
+        <button onClick={() => navigate('/check')}>Check Status</button>
         <button onClick={() => navigate('/jobs')}>Find jobs</button>
         <button onClick={() => navigate('/companies')}>Companies</button>
         <button onClick={() => navigate('/resources')}>Career resources</button>
@@ -95,7 +96,7 @@ export function DashboardLayout({
           <span className="avatar">AM</span>
           <div>
             <b>Alex Morgan</b>
-            <small>{role}@northstar.dev</small>
+            <small>{role}@Eyros.dev</small>
           </div>
         </div>
       </aside>
@@ -105,7 +106,7 @@ export function DashboardLayout({
             <Icon name="menu" />
           </button>
           <div>
-            <span className="workspace-breadcrumb">Northstar / {role}</span>
+            <span className="workspace-breadcrumb">Eyros / {role}</span>
           </div>
           <button className="icon-button" aria-label="Notifications">
             <Icon name="bell" />
