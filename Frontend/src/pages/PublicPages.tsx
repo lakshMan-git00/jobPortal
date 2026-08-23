@@ -1,24 +1,27 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { jobs } from '../data/mockData';
-import { getJobs } from '../services/api';
-import type { Job } from '../types';
+import { applyForJob, getJob, getJobs } from '../services/api';
+import type { AuthUser, Job } from '../types';
 import { Icon } from '../components/common/Icon';
 import { Badge, Button, EmptyState } from '../components/common/Ui';
 import { JobCard } from '../components/jobs/JobCard';
 import { navigate } from '../routes/navigation';
 
 export function HomePage({
-  saved,
-  toggleSaved,
   openJob,
 }: {
-  saved: number[];
-  toggleSaved: (id: number) => void;
   openJob: (job: Job) => void;
 }) {
   const [keyword, setKeyword] = useState('');
   const [location, setLocation] = useState('');
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getJobs()
+      .then(setJobs)
+      .finally(() => setLoading(false));
+  }, []);
   const search = (e: FormEvent) => {
     e.preventDefault();
     navigate(
@@ -86,15 +89,16 @@ export function HomePage({
           </button>
         </div>
         <div className="job-list home-jobs">
-          {jobs.slice(0, 4).map((job) => (
+          {loading ? <div className="loading">Loading opportunities…</div> : jobs.slice(0, 4).map((job) => (
             <JobCard
               job={job}
-              saved={saved.includes(job.id)}
-              onSave={() => toggleSaved(job.id)}
               onOpen={() => openJob(job)}
               key={job.id}
             />
           ))}
+          {!loading && jobs.length === 0 && (
+            <EmptyState title="No jobs are live yet" text="Please check back soon for new opportunities." />
+          )}
         </div>
       </section>
       <CareerCta />
@@ -102,28 +106,36 @@ export function HomePage({
   );
 }
 export function JobsPage({
-  saved,
-  toggleSaved,
   openJob,
 }: {
-  saved: number[];
-  toggleSaved: (id: number) => void;
   openJob: (job: Job) => void;
 }) {
   const params = new URLSearchParams(window.location.search);
   const [keyword, setKeyword] = useState(params.get('keyword') ?? '');
   const [location, setLocation] = useState(params.get('location') ?? '');
-  const [result, setResult] = useState<Job[]>(jobs);
-  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [mode, setMode] = useState('All');
   const load = async (nextKeyword = keyword, nextLocation = location) => {
     setLoading(true);
+    setError('');
     try {
       setResult(await getJobs({ keyword: nextKeyword, location: nextLocation }));
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Unable to load jobs.');
     } finally {
       setLoading(false);
     }
   };
+  useEffect(() => {
+    getJobs({ keyword, location })
+      .then(setResult)
+      .catch((loadError) => setError(loadError instanceof Error ? loadError.message : 'Unable to load jobs.'))
+      .finally(() => setLoading(false));
+  // Search values are read from the URL once on this route entry.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const submit = (e: FormEvent) => {
     e.preventDefault();
     navigate(
@@ -180,12 +192,12 @@ export function JobsPage({
       <div className="job-list">
         {loading ? (
           <div className="loading">Loading opportunities…</div>
+        ) : error ? (
+          <EmptyState title="Jobs are unavailable" text={error} action={<Button onClick={() => void load()}>Try again</Button>} />
         ) : displayed.length ? (
           displayed.map((job) => (
             <JobCard
               job={job}
-              saved={saved.includes(job.id)}
-              onSave={() => toggleSaved(job.id)}
               onOpen={() => openJob(job)}
               key={job.id}
             />
@@ -213,20 +225,51 @@ export function JobsPage({
   );
 }
 export function JobDetailsPage({
-  job,
-  saved,
-  toggleSaved,
-  apply,
+  slug,
+  user,
+  notify,
 }: {
-  job?: Job;
-  saved: boolean;
-  toggleSaved: () => void;
-  apply: () => void;
+  slug: string;
+  user: AuthUser | null;
+  notify: (message: string) => void;
 }) {
+  const [job, setJob] = useState<Job>();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [applying, setApplying] = useState(false);
+
+  useEffect(() => {
+    getJob(slug)
+      .then(setJob)
+      .catch((loadError) => setError(loadError instanceof Error ? loadError.message : 'Job not found.'))
+      .finally(() => setLoading(false));
+  }, [slug]);
+
+  const apply = async () => {
+    if (!user) {
+      navigate(`/login?next=${encodeURIComponent(`/jobs/${slug}`)}`);
+      return;
+    }
+    if (user.role !== 'candidate') {
+      notify('Only candidate accounts can apply for jobs.');
+      return;
+    }
+    setApplying(true);
+    try {
+      await applyForJob(job!.id);
+      notify('Your application was submitted successfully.');
+    } catch (applicationError) {
+      notify(applicationError instanceof Error ? applicationError.message : 'Unable to submit application.');
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  if (loading) return <section className="not-found"><div className="loading">Loading role…</div></section>;
   if (!job)
     return (
       <section className="not-found">
-        <h1>Job not found.</h1>
+        <h1>{error || 'Job not found.'}</h1>
         <Button onClick={() => navigate('/jobs')}>Browse open roles</Button>
       </section>
     );
@@ -237,7 +280,7 @@ export function JobDetailsPage({
       </button>
       <div className="detail-grid">
         <div>
-          <div className={`company-logo large ${job.tone}`}>{job.logo}</div>
+          <div className="company-logo large violet">{job.company[0]}</div>
           <span className="eyebrow dark">
             <i />
             {job.posted}
@@ -247,27 +290,13 @@ export function JobDetailsPage({
             {job.company} · {job.location}
           </p>
           <div className="detail-actions">
-            <Button onClick={apply}>
-              Apply now <Icon name="arrow" size={16} />
-            </Button>
-            <Button className="outline-button" onClick={toggleSaved}>
-              <Icon name="bookmark" size={17} />
-              {saved ? 'Saved' : 'Save job'}
+            <Button onClick={() => void apply()} disabled={applying}>
+              {applying ? 'Submitting…' : 'Apply now'} <Icon name="arrow" size={16} />
             </Button>
           </div>
           <article className="description">
             <h2>About the role</h2>
             <p>{job.description}</p>
-            <p>
-              You'll partner closely with a talented, kind team to create a product experience that
-              feels clear, powerful, and remarkably human.
-            </p>
-            <h2>What you’ll do</h2>
-            <ul>
-              <li>Lead high-impact work from first conversation through launch.</li>
-              <li>Collaborate with product, engineering, and customers.</li>
-              <li>Raise the craft bar through thoughtful systems and feedback.</li>
-            </ul>
             <h2>Skills we’re looking for</h2>
             <div className="tags">
               {job.skills.map((skill) => (
@@ -288,14 +317,11 @@ export function JobDetailsPage({
           </p>
           <p>
             <Icon name="chart" />
-            {job.salary}
+            {job.salary ?? 'Not disclosed'}
           </p>
           <hr />
           <h3>About {job.company}</h3>
-          <p>
-            Building tools that help teams do their best work. A distributed team with a high bar
-            for craft and care.
-          </p>
+          <p>{job.company_description || 'No company description has been provided.'}</p>
         </aside>
       </div>
     </section>
@@ -304,13 +330,11 @@ export function JobDetailsPage({
 function TrustStrip() {
   return (
     <section className="trust">
-      <span>Trusted by teams shaping what’s next</span>
+      <span>Thoughtful opportunities, published by verified employers</span>
       <div>
-        <b>linear</b>
-        <b>notion</b>
-        <b>Webflow</b>
-        <b>vercel</b>
-        <b>framer</b>
+        <b>Discover</b>
+        <b>Apply</b>
+        <b>Grow</b>
       </div>
     </section>
   );

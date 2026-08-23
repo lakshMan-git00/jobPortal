@@ -4,18 +4,14 @@ import type { Job } from '../../types';
 
 export function JobCard({
   job,
-  saved,
-  onSave,
   onOpen,
 }: {
   job: Job;
-  saved: boolean;
-  onSave: () => void;
   onOpen: () => void;
 }) {
   return (
     <article className="job-card">
-      <div className={`company-logo ${job.tone}`}>{job.logo}</div>
+      <div className="company-logo violet">{job.company[0]}</div>
       <div className="job-copy">
         <div className="job-heading">
           <button className="job-link" onClick={onOpen}>
@@ -33,7 +29,7 @@ export function JobCard({
             <Icon name="briefcase" size={15} />
             {job.type}
           </span>
-          <span>{job.salary}</span>
+          <span>{job.salary ?? 'Not disclosed'}</span>
         </div>
         <div className="tags">
           {job.skills.slice(0, 3).map((skill) => (
@@ -42,13 +38,6 @@ export function JobCard({
         </div>
       </div>
       <div className="job-actions">
-        <button
-          className={saved ? 'icon-button is-saved' : 'icon-button'}
-          aria-label={`Save ${job.title}`}
-          onClick={onSave}
-        >
-          <Icon name="bookmark" size={18} />
-        </button>
         <span className="posted">
           <Icon name="clock" size={14} />
           {job.posted}

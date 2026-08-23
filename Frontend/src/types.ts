@@ -8,19 +8,25 @@ export type Job = {
   location: string;
   mode: 'Remote' | 'Hybrid' | 'On-site';
   type: 'Full-time' | 'Contract';
-  salary: string;
+  salary: string | null;
   posted: string;
   skills: string[];
-  logo: string;
-  tone: string;
   description: string;
+  company_description?: string | null;
 };
 
-export type Application = {
+export type AuthUser = {
   id: number;
-  job: string;
-  company: string;
-  applied: string;
-  status: 'Submitted' | 'Under review' | 'Interview';
-  tone: string;
+  name: string;
+  email: string;
+  role: Exclude<Role, 'guest'>;
+  company_id: number | null;
+};
+
+export type Company = {
+  id: number;
+  name: string;
+  slug: string;
+  employers_count?: number;
+  jobs_count?: number;
 };
