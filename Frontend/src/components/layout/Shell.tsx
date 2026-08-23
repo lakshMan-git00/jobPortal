@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { Role } from '../../types';
+import type { AuthUser, Role } from '../../types';
 import { Icon } from '../common/Icon';
 import { navigate } from '../../routes/navigation';
 
@@ -10,33 +10,38 @@ export function Brand() {
     </button>
   );
 }
-export function PublicHeader({ role, onRole }: { role: Role; onRole: (role: Role) => void }) {
+export function PublicHeader({
+  user,
+  onSignOut,
+}: {
+  user: AuthUser | null;
+  onSignOut: () => void;
+}) {
   return (
     <header className="topbar">
       <Brand />
       <nav>
-        <button onClick={() => navigate('/check')}>Check Status</button>
         <button onClick={() => navigate('/jobs')}>Find jobs</button>
         <button onClick={() => navigate('/companies')}>Companies</button>
         <button onClick={() => navigate('/resources')}>Career resources</button>
       </nav>
       <div className="header-actions">
-        {role === 'guest' ? (
+        {!user ? (
           <>
             <button className="quiet" onClick={() => navigate('/login')}>
               Sign in
             </button>
-            <button className="button compact" onClick={() => onRole('employer')}>
+            <button className="button compact" onClick={() => navigate('/login')}>
               Post a job <Icon name="arrow" size={15} />
             </button>
           </>
         ) : (
           <>
-            <button className="quiet" onClick={() => navigate(`/${role}/dashboard`)}>
-              {role === 'candidate' ? 'My dashboard' : 'Workspace'}
+            <button className="quiet" onClick={() => navigate(`/${user.role}/dashboard`)}>
+              {user.role === 'candidate' ? 'My dashboard' : 'Workspace'}
             </button>
-            <button className="avatar" onClick={() => onRole('guest')} aria-label="Sign out">
-              AM
+            <button className="avatar" onClick={onSignOut} aria-label="Sign out">
+              {user.name.slice(0, 2).toUpperCase()}
             </button>
           </>
         )}
@@ -47,7 +52,6 @@ export function PublicHeader({ role, onRole }: { role: Role; onRole: (role: Role
 const candidate = [
   ['home', 'Dashboard', '/candidate/dashboard'],
   ['briefcase', 'Applications', '/candidate/applications'],
-  ['bookmark', 'Saved jobs', '/candidate/saved-jobs'],
   ['file', 'Resumes', '/candidate/resumes'],
   ['settings', 'Settings', '/candidate/settings'],
 ] as const;
@@ -93,10 +97,10 @@ export function DashboardLayout({
           ))}
         </div>
         <div className="sidebar-user">
-          <span className="avatar">AM</span>
+          <span className="avatar">{role[0].toUpperCase()}</span>
           <div>
-            <b>Alex Morgan</b>
-            <small>{role}@Eyros.dev</small>
+            <b>{role} account</b>
+            <small>Signed-in workspace</small>
           </div>
         </div>
       </aside>

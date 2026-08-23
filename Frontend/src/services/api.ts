@@ -1,33 +1,152 @@
 /**
- * Single API boundary. Set VITE_API_URL when the Laravel service is available.
- * Service methods deliberately return mock data during local front-end development.
+ * Single boundary for the Sanctum cookie-authenticated Laravel API.
  */
-import { jobs } from '../data/mockData';
-import type { Job } from '../types';
+import type { AuthUser, Company, Job } from '../types';
 
-const baseUrl = import.meta.env.VITE_API_URL ?? '';
+const baseUrl = (import.meta.env.VITE_API_URL ?? 'http://localhost:8000').replace(/\/$/, '');
+
+type ApiOptions = RequestInit & { csrf?: boolean };
+
+function xsrfToken(): string | undefined {
+  const entry = document.cookie.split('; ').find((cookie) => cookie.startsWith('XSRF-TOKEN='));
+  return entry ? decodeURIComponent(entry.slice('XSRF-TOKEN='.length)) : undefined;
+}
+
+async function request<T>(
+  path: string,
+  { csrf = false, headers, ...options }: ApiOptions = {},
+): Promise<T> {
+  if (csrf) {
+    const csrfResponse = await fetch(`${baseUrl}/sanctum/csrf-cookie`, { credentials: 'include' });
+    if (!csrfResponse.ok) throw new Error('Unable to establish a secure session.');
+  }
+  const requestHeaders = new Headers(headers);
+  requestHeaders.set('Accept', 'application/json');
+  const token = csrf ? xsrfToken() : undefined;
+  if (token) requestHeaders.set('X-XSRF-TOKEN', token);
+  const response = await fetch(`${baseUrl}${path}`, {
+    credentials: 'include',
+    headers: requestHeaders,
+    ...options,
+  });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+    throw new Error(payload?.message ?? 'Something went wrong. Please try again.');
+  }
+  return response.status === 204 ? (undefined as T) : ((await response.json()) as T);
+}
 
 export async function getJobs(
   filters: { keyword?: string; location?: string } = {},
 ): Promise<Job[]> {
-  if (baseUrl) {
-    const params = new URLSearchParams();
-    if (filters.keyword) params.set('keyword', filters.keyword);
-    if (filters.location) params.set('location', filters.location);
-    const response = await fetch(`${baseUrl}/api/jobs?${params}`, {
-      credentials: 'include',
-      headers: { Accept: 'application/json' },
-    });
-    if (!response.ok) throw new Error('Unable to load jobs. Please try again.');
-    const payload = (await response.json()) as { data: Job[] };
-    return payload.data;
+  const params = new URLSearchParams();
+  if (filters.keyword) params.set('keyword', filters.keyword);
+  if (filters.location) params.set('location', filters.location);
+  const payload = await request<{ data: Job[] }>(`/api/jobs?${params}`);
+  return payload.data;
+}
+
+export async function getJob(slug: string): Promise<Job> {
+  return (await request<{ data: Job }>(`/api/jobs/${encodeURIComponent(slug)}`)).data;
+}
+
+export async function signIn(email: string, password: string): Promise<AuthUser> {
+  return (
+    await request<{ user: AuthUser }>('/api/auth/login', {
+      method: 'POST',
+      csrf: true,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
+  ).user;
+}
+
+export async function register(
+  name: string,
+  email: string,
+  password: string,
+  passwordConfirmation: string,
+): Promise<AuthUser> {
+  return (
+    await request<{ user: AuthUser }>('/api/auth/register', {
+      method: 'POST',
+      csrf: true,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password, password_confirmation: passwordConfirmation }),
+    })
+  ).user;
+}
+
+export async function currentUser(): Promise<AuthUser | null> {
+  try {
+    return (await request<{ user: AuthUser }>('/api/auth/me')).user;
+  } catch {
+    return null;
   }
-  const term = `${filters.keyword ?? ''} ${filters.location ?? ''}`.trim().toLowerCase();
-  return jobs.filter(
-    (job) =>
-      !term ||
-      `${job.title} ${job.company} ${job.location} ${job.skills.join(' ')}`
-        .toLowerCase()
-        .includes(term),
-  );
+}
+
+export async function signOut(): Promise<void> {
+  await request<void>('/api/auth/logout', { method: 'POST', csrf: true });
+}
+
+export async function applyForJob(jobId: number, coverLetter = ''): Promise<void> {
+  await request(`/api/jobs/${jobId}/apply`, {
+    method: 'POST',
+    csrf: true,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cover_letter: coverLetter }),
+  });
+}
+
+export async function getCompanies(): Promise<Company[]> {
+  return (await request<{ data: Company[] }>('/api/admin/companies')).data;
+}
+
+export async function createCompany(input: {
+  name: string;
+  website?: string;
+  description?: string;
+}): Promise<Company> {
+  return (
+    await request<{ data: Company }>('/api/admin/companies', {
+      method: 'POST',
+      csrf: true,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+  ).data;
+}
+
+export async function createEmployer(input: {
+  name: string;
+  email: string;
+  password: string;
+  password_confirmation: string;
+  company_id: number;
+}): Promise<void> {
+  await request('/api/admin/employers', {
+    method: 'POST',
+    csrf: true,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function createJob(input: {
+  title: string;
+  location: string;
+  workplace_type: 'Remote' | 'Hybrid' | 'On-site';
+  employment_type: 'Full-time' | 'Part-time' | 'Contract' | 'Internship';
+  salary_range?: string;
+  description: string;
+  skills: string[];
+}): Promise<Job> {
+  return (
+    await request<{ data: Job }>('/api/employer/jobs', {
+      method: 'POST',
+      csrf: true,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+  ).data;
 }
