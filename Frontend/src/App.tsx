@@ -70,6 +70,7 @@ function App() {
         />
       );
     if (path === '/companies' || path === '/resources') return <InfoPage type={path.slice(1)} />;
+    if (path === '/check') return <CheckHealth />;
     return <NotFound />;
   })();
   if (isDashboard && routeRole) {
@@ -181,7 +182,7 @@ function LoginPage({ onRole }: { onRole: (role: Exclude<Role, 'guest'>) => void 
       <section>
         <span className="eyebrow dark">
           <i />
-          Welcome to Northstar
+          Welcome to Eyros
         </span>
         <h1>
           Pick a workspace
@@ -222,7 +223,7 @@ function InfoPage({ type }: { type: string }) {
     <main className="info-page">
       <span className="eyebrow dark">
         <i />
-        Northstar
+        Eyros
       </span>
       <h1>
         {type === 'companies'
@@ -243,6 +244,25 @@ function NotFound() {
     </main>
   );
 }
+
+function CheckHealth() {
+  const [status, setStatus] = useState(false);
+
+  const checkBackendHealth = async () => {
+    const response = await fetch('http://127.0.0.1:8000/health');
+    const data = await response.json();
+    setStatus(data.status);
+  };
+  return (
+    <main className="not-found">
+      <h1>Check Health</h1>
+      <button onClick={checkBackendHealth}>Check Health</button>
+      <p>{status ? 'Backend is Ready' : 'Backend is not Ready'}</p>
+      <Button onClick={() => navigate('/')}>Return home</Button>
+    </main>
+  );
+}
+
 function Toast({ text }: { text: string }) {
   return (
     <div className="toast">
@@ -256,7 +276,7 @@ function PublicFooter() {
     <footer>
       <div>
         <button className="brand" onClick={() => navigate('/')}>
-          <span className="brand-mark">N</span>northstar
+          <span className="brand-mark">N</span>Eyros
         </button>
         <p>Find work that moves you forward.</p>
       </div>
@@ -281,7 +301,7 @@ function PublicFooter() {
         </form>
       </div>
       <small>
-        © 2026 Northstar, Inc. <span>Privacy</span>
+        © 2026 Eyros <span>Privacy</span>
         <span>Terms</span>
       </small>
     </footer>
