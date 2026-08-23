@@ -12,7 +12,10 @@ function xsrfToken(): string | undefined {
   return entry ? decodeURIComponent(entry.slice('XSRF-TOKEN='.length)) : undefined;
 }
 
-async function request<T>(path: string, { csrf = false, headers, ...options }: ApiOptions = {}): Promise<T> {
+async function request<T>(
+  path: string,
+  { csrf = false, headers, ...options }: ApiOptions = {},
+): Promise<T> {
   if (csrf) {
     const csrfResponse = await fetch(`${baseUrl}/sanctum/csrf-cookie`, { credentials: 'include' });
     if (!csrfResponse.ok) throw new Error('Unable to establish a secure session.');
@@ -48,21 +51,30 @@ export async function getJob(slug: string): Promise<Job> {
 }
 
 export async function signIn(email: string, password: string): Promise<AuthUser> {
-  return (await request<{ user: AuthUser }>('/api/auth/login', {
-    method: 'POST',
-    csrf: true,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  })).user;
+  return (
+    await request<{ user: AuthUser }>('/api/auth/login', {
+      method: 'POST',
+      csrf: true,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
+  ).user;
 }
 
-export async function register(name: string, email: string, password: string, passwordConfirmation: string): Promise<AuthUser> {
-  return (await request<{ user: AuthUser }>('/api/auth/register', {
-    method: 'POST',
-    csrf: true,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, email, password, password_confirmation: passwordConfirmation }),
-  })).user;
+export async function register(
+  name: string,
+  email: string,
+  password: string,
+  passwordConfirmation: string,
+): Promise<AuthUser> {
+  return (
+    await request<{ user: AuthUser }>('/api/auth/register', {
+      method: 'POST',
+      csrf: true,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password, password_confirmation: passwordConfirmation }),
+    })
+  ).user;
 }
 
 export async function currentUser(): Promise<AuthUser | null> {
@@ -79,7 +91,9 @@ export async function signOut(): Promise<void> {
 
 export async function applyForJob(jobId: number, coverLetter = ''): Promise<void> {
   await request(`/api/jobs/${jobId}/apply`, {
-    method: 'POST', csrf: true, headers: { 'Content-Type': 'application/json' },
+    method: 'POST',
+    csrf: true,
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ cover_letter: coverLetter }),
   });
 }
@@ -88,24 +102,51 @@ export async function getCompanies(): Promise<Company[]> {
   return (await request<{ data: Company[] }>('/api/admin/companies')).data;
 }
 
-export async function createCompany(input: { name: string; website?: string; description?: string }): Promise<Company> {
-  return (await request<{ data: Company }>('/api/admin/companies', {
-    method: 'POST', csrf: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
-  })).data;
+export async function createCompany(input: {
+  name: string;
+  website?: string;
+  description?: string;
+}): Promise<Company> {
+  return (
+    await request<{ data: Company }>('/api/admin/companies', {
+      method: 'POST',
+      csrf: true,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+  ).data;
 }
 
-export async function createEmployer(input: { name: string; email: string; password: string; password_confirmation: string; company_id: number }): Promise<void> {
+export async function createEmployer(input: {
+  name: string;
+  email: string;
+  password: string;
+  password_confirmation: string;
+  company_id: number;
+}): Promise<void> {
   await request('/api/admin/employers', {
-    method: 'POST', csrf: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
+    method: 'POST',
+    csrf: true,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
   });
 }
 
 export async function createJob(input: {
-  title: string; location: string; workplace_type: 'Remote' | 'Hybrid' | 'On-site';
-  employment_type: 'Full-time' | 'Part-time' | 'Contract' | 'Internship'; salary_range?: string;
-  description: string; skills: string[];
+  title: string;
+  location: string;
+  workplace_type: 'Remote' | 'Hybrid' | 'On-site';
+  employment_type: 'Full-time' | 'Part-time' | 'Contract' | 'Internship';
+  salary_range?: string;
+  description: string;
+  skills: string[];
 }): Promise<Job> {
-  return (await request<{ data: Job }>('/api/employer/jobs', {
-    method: 'POST', csrf: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
-  })).data;
+  return (
+    await request<{ data: Job }>('/api/employer/jobs', {
+      method: 'POST',
+      csrf: true,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+  ).data;
 }

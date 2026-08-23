@@ -52,16 +52,9 @@ function App() {
   }, [authReady, isDashboard, path, routeRole, user]);
   const page = (() => {
     if (path === '/') return <HomePage openJob={openJob} />;
-    if (path === '/jobs')
-      return <JobsPage openJob={openJob} />;
+    if (path === '/jobs') return <JobsPage openJob={openJob} />;
     if (path.startsWith('/jobs/')) {
-      return (
-        <JobDetailsPage
-          slug={path.replace('/jobs/', '')}
-          user={user}
-          notify={setToast}
-        />
-      );
+      return <JobDetailsPage slug={path.replace('/jobs/', '')} user={user} notify={setToast} />;
     }
     if (path === '/login')
       return (
@@ -77,7 +70,11 @@ function App() {
     return <NotFound />;
   })();
   if ((path === '/admin' || isDashboard) && !authReady) {
-    return <main className="not-found"><div className="loading">Checking your session…</div></main>;
+    return (
+      <main className="not-found">
+        <div className="loading">Checking your session…</div>
+      </main>
+    );
   }
   if (isDashboard && routeRole && user?.role === routeRole) {
     const dashboardPage = path.endsWith('/dashboard') ? (
@@ -112,13 +109,7 @@ function App() {
   );
 }
 
-function WorkspaceRoute({
-  role,
-  path,
-}: {
-  role: Exclude<Role, 'guest'>;
-  path: string;
-}) {
+function WorkspaceRoute({ role, path }: { role: Exclude<Role, 'guest'>; path: string }) {
   const title = path.split('/').pop()?.replace(/-/g, ' ') ?? 'workspace';
   if (role === 'admin' && path.endsWith('/users')) return <AdminAccessPage />;
   if (role === 'employer' && path.endsWith('/jobs')) return <EmployerJobsPage />;
@@ -128,7 +119,10 @@ function WorkspaceRoute({
       settings: ['Settings', 'Manage your profile and preferences.'],
     },
     employer: {
-      candidates: ['Candidates', 'Candidate information will become available as applications arrive.'],
+      candidates: [
+        'Candidates',
+        'Candidate information will become available as applications arrive.',
+      ],
       analytics: ['Analytics', 'Live hiring analytics will appear as jobs receive applications.'],
       settings: ['Settings', 'Manage company and workspace preferences.'],
     },
@@ -158,9 +152,10 @@ function LoginPage({ onAuthenticated }: { onAuthenticated: (user: AuthUser) => v
     setError('');
     setSubmitting(true);
     try {
-      const activeUser = mode === 'signin'
-        ? await signIn(email, password)
-        : await register(name, email, password, passwordConfirmation);
+      const activeUser =
+        mode === 'signin'
+          ? await signIn(email, password)
+          : await register(name, email, password, passwordConfirmation);
       onAuthenticated(activeUser);
     } catch (authError) {
       setError(authError instanceof Error ? authError.message : 'Unable to continue.');
@@ -175,21 +170,70 @@ function LoginPage({ onAuthenticated }: { onAuthenticated: (user: AuthUser) => v
           <i />
           Welcome to Eyros
         </span>
-        <h1>{mode === 'signin' ? <>Welcome <em>back.</em></> : <>Start your <em>next chapter.</em></>}</h1>
+        <h1>
+          {mode === 'signin' ? (
+            <>
+              Welcome <em>back.</em>
+            </>
+          ) : (
+            <>
+              Start your <em>next chapter.</em>
+            </>
+          )}
+        </h1>
         <p>
           {mode === 'signin'
             ? 'Sign in to manage your account or continue an application.'
             : 'Create a candidate account to save roles and apply securely.'}
         </p>
         <form className="auth-form" onSubmit={(event) => void submit(event)}>
-          {mode === 'register' && <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Full name" autoComplete="name" required />}
-          <input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Email address" type="email" autoComplete="email" required />
-          <input value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Password" type="password" autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} required />
-          {mode === 'register' && <input value={passwordConfirmation} onChange={(event) => setPasswordConfirmation(event.target.value)} placeholder="Confirm password" type="password" autoComplete="new-password" required />}
+          {mode === 'register' && (
+            <input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Full name"
+              autoComplete="name"
+              required
+            />
+          )}
+          <input
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="Email address"
+            type="email"
+            autoComplete="email"
+            required
+          />
+          <input
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder="Password"
+            type="password"
+            autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+            required
+          />
+          {mode === 'register' && (
+            <input
+              value={passwordConfirmation}
+              onChange={(event) => setPasswordConfirmation(event.target.value)}
+              placeholder="Confirm password"
+              type="password"
+              autoComplete="new-password"
+              required
+            />
+          )}
           {error && <p className="auth-error">{error}</p>}
-          <Button type="submit" disabled={submitting}>{submitting ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Create account'}</Button>
+          <Button type="submit" disabled={submitting}>
+            {submitting ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Create account'}
+          </Button>
         </form>
-        <button className="text-link auth-switch" onClick={() => { setMode(mode === 'signin' ? 'register' : 'signin'); setError(''); }}>
+        <button
+          className="text-link auth-switch"
+          onClick={() => {
+            setMode(mode === 'signin' ? 'register' : 'signin');
+            setError('');
+          }}
+        >
           {mode === 'signin' ? 'Need an account? Register' : 'Already have an account? Sign in'}
         </button>
       </section>
@@ -208,7 +252,11 @@ function InfoPage({ type }: { type: string }) {
           ? 'Meet teams building what’s next.'
           : 'Career growth, made practical.'}
       </h1>
-      <p>{type === 'companies' ? 'Employer profiles will appear once they are created and published by the platform team.' : 'Career resources are being prepared.'}</p>
+      <p>
+        {type === 'companies'
+          ? 'Employer profiles will appear once they are created and published by the platform team.'
+          : 'Career resources are being prepared.'}
+      </p>
       <Button onClick={() => navigate('/jobs')}>Browse open roles</Button>
     </main>
   );
@@ -222,7 +270,6 @@ function NotFound() {
     </main>
   );
 }
-
 
 function Toast({ text }: { text: string }) {
   return (

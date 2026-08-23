@@ -2,13 +2,7 @@ import { Icon } from '../common/Icon';
 import { Badge, Button } from '../common/Ui';
 import type { Job } from '../../types';
 
-export function JobCard({
-  job,
-  onOpen,
-}: {
-  job: Job;
-  onOpen: () => void;
-}) {
+export function JobCard({ job, onOpen }: { job: Job; onOpen: () => void }) {
   return (
     <article className="job-card">
       <div className="company-logo violet">{job.company[0]}</div>

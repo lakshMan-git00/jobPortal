@@ -1013,12 +1013,36 @@ footer small span {
   font: inherit;
 }
 
-.auth-form .button { justify-content: center; }
-.auth-error { color: #b42318; margin: 0; font-size: 14px; }
-.auth-switch { margin-top: 18px; }
-.auth-form select, .auth-form textarea { width: 100%; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); padding: 13px 14px; font: inherit; }
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.success-message { color: #087443; margin: 0 0 16px; }
+.auth-form .button {
+  justify-content: center;
+}
+.auth-error {
+  color: #b42318;
+  margin: 0;
+  font-size: 14px;
+}
+.auth-switch {
+  margin-top: 18px;
+}
+.auth-form select,
+.auth-form textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  padding: 13px 14px;
+  font: inherit;
+}
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.success-message {
+  color: #087443;
+  margin: 0 0 16px;
+}
 .login-page h1 {
   font-size: 52px;
   margin-bottom: 14px;

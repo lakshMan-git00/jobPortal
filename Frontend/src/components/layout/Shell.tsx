@@ -10,7 +10,13 @@ export function Brand() {
     </button>
   );
 }
-export function PublicHeader({ user, onSignOut }: { user: AuthUser | null; onSignOut: () => void }) {
+export function PublicHeader({
+  user,
+  onSignOut,
+}: {
+  user: AuthUser | null;
+  onSignOut: () => void;
+}) {
   return (
     <header className="topbar">
       <Brand />

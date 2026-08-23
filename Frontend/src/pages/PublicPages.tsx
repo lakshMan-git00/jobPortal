@@ -7,11 +7,7 @@ import { Badge, Button, EmptyState } from '../components/common/Ui';
 import { JobCard } from '../components/jobs/JobCard';
 import { navigate } from '../routes/navigation';
 
-export function HomePage({
-  openJob,
-}: {
-  openJob: (job: Job) => void;
-}) {
+export function HomePage({ openJob }: { openJob: (job: Job) => void }) {
   const [keyword, setKeyword] = useState('');
   const [location, setLocation] = useState('');
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -89,15 +85,18 @@ export function HomePage({
           </button>
         </div>
         <div className="job-list home-jobs">
-          {loading ? <div className="loading">Loading opportunities…</div> : jobs.slice(0, 4).map((job) => (
-            <JobCard
-              job={job}
-              onOpen={() => openJob(job)}
-              key={job.id}
-            />
-          ))}
+          {loading ? (
+            <div className="loading">Loading opportunities…</div>
+          ) : (
+            jobs
+              .slice(0, 4)
+              .map((job) => <JobCard job={job} onOpen={() => openJob(job)} key={job.id} />)
+          )}
           {!loading && jobs.length === 0 && (
-            <EmptyState title="No jobs are live yet" text="Please check back soon for new opportunities." />
+            <EmptyState
+              title="No jobs are live yet"
+              text="Please check back soon for new opportunities."
+            />
           )}
         </div>
       </section>
@@ -105,11 +104,7 @@ export function HomePage({
     </>
   );
 }
-export function JobsPage({
-  openJob,
-}: {
-  openJob: (job: Job) => void;
-}) {
+export function JobsPage({ openJob }: { openJob: (job: Job) => void }) {
   const params = new URLSearchParams(window.location.search);
   const [keyword, setKeyword] = useState(params.get('keyword') ?? '');
   const [location, setLocation] = useState(params.get('location') ?? '');
@@ -131,10 +126,12 @@ export function JobsPage({
   useEffect(() => {
     getJobs({ keyword, location })
       .then(setResult)
-      .catch((loadError) => setError(loadError instanceof Error ? loadError.message : 'Unable to load jobs.'))
+      .catch((loadError) =>
+        setError(loadError instanceof Error ? loadError.message : 'Unable to load jobs.'),
+      )
       .finally(() => setLoading(false));
-  // Search values are read from the URL once on this route entry.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Search values are read from the URL once on this route entry.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -193,15 +190,13 @@ export function JobsPage({
         {loading ? (
           <div className="loading">Loading opportunities…</div>
         ) : error ? (
-          <EmptyState title="Jobs are unavailable" text={error} action={<Button onClick={() => void load()}>Try again</Button>} />
+          <EmptyState
+            title="Jobs are unavailable"
+            text={error}
+            action={<Button onClick={() => void load()}>Try again</Button>}
+          />
         ) : displayed.length ? (
-          displayed.map((job) => (
-            <JobCard
-              job={job}
-              onOpen={() => openJob(job)}
-              key={job.id}
-            />
-          ))
+          displayed.map((job) => <JobCard job={job} onOpen={() => openJob(job)} key={job.id} />)
         ) : (
           <EmptyState
             title="No jobs matched your search"
@@ -241,7 +236,9 @@ export function JobDetailsPage({
   useEffect(() => {
     getJob(slug)
       .then(setJob)
-      .catch((loadError) => setError(loadError instanceof Error ? loadError.message : 'Job not found.'))
+      .catch((loadError) =>
+        setError(loadError instanceof Error ? loadError.message : 'Job not found.'),
+      )
       .finally(() => setLoading(false));
   }, [slug]);
 
@@ -259,13 +256,22 @@ export function JobDetailsPage({
       await applyForJob(job!.id);
       notify('Your application was submitted successfully.');
     } catch (applicationError) {
-      notify(applicationError instanceof Error ? applicationError.message : 'Unable to submit application.');
+      notify(
+        applicationError instanceof Error
+          ? applicationError.message
+          : 'Unable to submit application.',
+      );
     } finally {
       setApplying(false);
     }
   };
 
-  if (loading) return <section className="not-found"><div className="loading">Loading role…</div></section>;
+  if (loading)
+    return (
+      <section className="not-found">
+        <div className="loading">Loading role…</div>
+      </section>
+    );
   if (!job)
     return (
       <section className="not-found">
