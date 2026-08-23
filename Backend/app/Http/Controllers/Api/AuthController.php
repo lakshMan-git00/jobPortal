@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 
@@ -26,10 +25,7 @@ class AuthController extends Controller
             'role' => 'candidate',
         ]);
 
-        Auth::login($user);
-        $request->session()->regenerate();
-
-        return response()->json(['user' => $this->user($user)], 201);
+        return response()->json($this->authenticated($user), 201);
     }
 
     public function login(Request $request)
@@ -39,13 +35,12 @@ class AuthController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        if (! Auth::attempt(['email' => strtolower($credentials['email']), 'password' => $credentials['password']])) {
+        $user = User::where('email', strtolower($credentials['email']))->first();
+        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             return response()->json(['message' => 'The provided credentials are incorrect.'], 422);
         }
 
-        $request->session()->regenerate();
-
-        return response()->json(['user' => $this->user($request->user())]);
+        return response()->json($this->authenticated($user));
     }
 
     public function me(Request $request)
@@ -55,9 +50,7 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        Auth::logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        $request->user()->currentAccessToken()?->delete();
 
         return response()->noContent();
     }
@@ -71,5 +64,21 @@ class AuthController extends Controller
             'role' => $user->role,
             'company_id' => $user->company_id,
         ];
+    }
+
+    private function authenticated(User $user): array
+    {
+        $token = $user->createToken('eyros-web', $this->abilities($user))->plainTextToken;
+
+        return ['user' => $this->user($user), 'token' => $token];
+    }
+
+    private function abilities(User $user): array
+    {
+        return match ($user->role) {
+            'admin' => ['admin:manage'],
+            'employer' => ['jobs:write'],
+            default => ['jobs:apply'],
+        };
     }
 }
