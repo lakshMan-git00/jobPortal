@@ -1,31 +1,34 @@
 /**
- * Single boundary for the Sanctum cookie-authenticated Laravel API.
+ * Single boundary for the token-authenticated Laravel API.
  */
 import type { AuthUser, Company, Job } from '../types';
 
 const baseUrl = (import.meta.env.VITE_API_URL ?? 'http://localhost:8000').replace(/\/$/, '');
+const AUTH_TOKEN_KEY = 'job_portal_auth_token';
 
-type ApiOptions = RequestInit & { csrf?: boolean };
+type ApiOptions = RequestInit;
 
-function xsrfToken(): string | undefined {
-  const entry = document.cookie.split('; ').find((cookie) => cookie.startsWith('XSRF-TOKEN='));
-  return entry ? decodeURIComponent(entry.slice('XSRF-TOKEN='.length)) : undefined;
+function authToken(): string | null {
+  return window.localStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+function storeAuthToken(token: string | null): void {
+  if (token) {
+    window.localStorage.setItem(AUTH_TOKEN_KEY, token);
+    return;
+  }
+  window.localStorage.removeItem(AUTH_TOKEN_KEY);
 }
 
 async function request<T>(
   path: string,
-  { csrf = false, headers, ...options }: ApiOptions = {},
+  { headers, ...options }: ApiOptions = {},
 ): Promise<T> {
-  if (csrf) {
-    const csrfResponse = await fetch(`${baseUrl}/sanctum/csrf-cookie`, { credentials: 'include' });
-    if (!csrfResponse.ok) throw new Error('Unable to establish a secure session.');
-  }
   const requestHeaders = new Headers(headers);
   requestHeaders.set('Accept', 'application/json');
-  const token = csrf ? xsrfToken() : undefined;
-  if (token) requestHeaders.set('X-XSRF-TOKEN', token);
+  const token = authToken();
+  if (token) requestHeaders.set('Authorization', `Bearer ${token}`);
   const response = await fetch(`${baseUrl}${path}`, {
-    credentials: 'include',
     headers: requestHeaders,
     ...options,
   });
@@ -51,14 +54,13 @@ export async function getJob(slug: string): Promise<Job> {
 }
 
 export async function signIn(email: string, password: string): Promise<AuthUser> {
-  return (
-    await request<{ user: AuthUser }>('/api/auth/login', {
-      method: 'POST',
-      csrf: true,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    })
-  ).user;
+  const payload = await request<{ user: AuthUser; token: string }>('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  storeAuthToken(payload.token);
+  return payload.user;
 }
 
 export async function register(
@@ -67,32 +69,36 @@ export async function register(
   password: string,
   passwordConfirmation: string,
 ): Promise<AuthUser> {
-  return (
-    await request<{ user: AuthUser }>('/api/auth/register', {
-      method: 'POST',
-      csrf: true,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password, password_confirmation: passwordConfirmation }),
-    })
-  ).user;
+  const payload = await request<{ user: AuthUser; token: string }>('/api/auth/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, email, password, password_confirmation: passwordConfirmation }),
+  });
+  storeAuthToken(payload.token);
+  return payload.user;
 }
 
 export async function currentUser(): Promise<AuthUser | null> {
+  if (!authToken()) return null;
   try {
     return (await request<{ user: AuthUser }>('/api/auth/me')).user;
   } catch {
+    storeAuthToken(null);
     return null;
   }
 }
 
 export async function signOut(): Promise<void> {
-  await request<void>('/api/auth/logout', { method: 'POST', csrf: true });
+  try {
+    await request<void>('/api/auth/logout', { method: 'POST' });
+  } finally {
+    storeAuthToken(null);
+  }
 }
 
 export async function applyForJob(jobId: number, coverLetter = ''): Promise<void> {
   await request(`/api/jobs/${jobId}/apply`, {
     method: 'POST',
-    csrf: true,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ cover_letter: coverLetter }),
   });
@@ -110,7 +116,6 @@ export async function createCompany(input: {
   return (
     await request<{ data: Company }>('/api/admin/companies', {
       method: 'POST',
-      csrf: true,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
     })
@@ -126,7 +131,6 @@ export async function createEmployer(input: {
 }): Promise<void> {
   await request('/api/admin/employers', {
     method: 'POST',
-    csrf: true,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
   });
@@ -144,7 +148,6 @@ export async function createJob(input: {
   return (
     await request<{ data: Job }>('/api/employer/jobs', {
       method: 'POST',
-      csrf: true,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
     })
