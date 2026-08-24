@@ -20,10 +20,7 @@ function storeAuthToken(token: string | null): void {
   window.localStorage.removeItem(AUTH_TOKEN_KEY);
 }
 
-async function request<T>(
-  path: string,
-  { headers, ...options }: ApiOptions = {},
-): Promise<T> {
+async function request<T>(path: string, { headers, ...options }: ApiOptions = {}): Promise<T> {
   const requestHeaders = new Headers(headers);
   requestHeaders.set('Accept', 'application/json');
   const token = authToken();
