@@ -50,6 +50,7 @@ function App() {
       navigate(`/login?next=${encodeURIComponent(path)}`);
     }
   }, [authReady, isDashboard, path, routeRole, user]);
+
   const page = (() => {
     if (path === '/') return <HomePage openJob={openJob} />;
     if (path === '/jobs') return <JobsPage openJob={openJob} />;
