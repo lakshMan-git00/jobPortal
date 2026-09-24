@@ -1,8 +1,11 @@
 import axios from 'axios';
 
+// Production requests use the same-origin proxy in vercel.json so the browser
+// can read XSRF-TOKEN and send the HttpOnly session cookie on API requests.
 const baseUrl = (
-  import.meta.env.VITE_API_URL ??
-  (import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin)
+  import.meta.env.DEV
+    ? import.meta.env.VITE_API_URL || 'http://localhost:8000'
+    : window.location.origin
 )
   .trim()
   .replace(/\/+$/, '')

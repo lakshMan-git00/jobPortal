@@ -38,6 +38,7 @@ pnpm-debug.log*
 /Frontend/.vite/
 /Frontend/.eslintcache
 /Frontend/*.tsbuildinfo
+/Frontend/tests
 
 # ------------------------------
 # Backend (Render)
