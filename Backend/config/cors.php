@@ -19,10 +19,10 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => array_values(array_filter(explode(',', env(
+    'allowed_origins' => array_values(array_filter(array_map(fn ($origin) => rtrim(trim($origin), '/'), explode(',', env(
         'FRONTEND_URLS',
         env('FRONTEND_URL', 'http://localhost:5173'),
-    )))),
+    ))))),
 
     'allowed_origins_patterns' => [],
 

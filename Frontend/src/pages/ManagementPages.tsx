@@ -1,10 +1,24 @@
+import { AdminUsers } from '../features/EmployerPages';
 import { useEffect, useState } from 'react';
-import { createCompany, createEmployer, createJob, getCompanies } from '../services/api';
-import type { Company } from '../types';
+import {
+  createCompany,
+  createEmployer,
+  getCompanies,
+  getEmployers,
+  updateEmployer,
+  removeEmployer,
+} from '../services/api';
+import type { Company, Employer } from '../types';
 import { Button, EmptyState } from '../components/common/Ui';
 
 export function AdminAccessPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [employers, setEmployers] = useState<Employer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState<Employer | null>(null);
+  const [query, setQuery] = useState('');
+  const [status, setStatus] = useState('all');
   const [companyName, setCompanyName] = useState('');
   const [employer, setEmployer] = useState({
     name: '',
@@ -16,11 +30,15 @@ export function AdminAccessPage() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const load = () =>
-    getCompanies()
-      .then(setCompanies)
+    Promise.all([getCompanies(), getEmployers()])
+      .then(([nextCompanies, nextEmployers]) => {
+        setCompanies(nextCompanies);
+        setEmployers(nextEmployers);
+      })
       .catch((loadError) =>
         setError(loadError instanceof Error ? loadError.message : 'Unable to load companies.'),
-      );
+      )
+      .finally(() => setLoading(false));
 
   useEffect(() => {
     void load();
@@ -30,28 +48,69 @@ export function AdminAccessPage() {
     event.preventDefault();
     setError('');
     setMessage('');
+    setBusy(true);
     try {
       await createCompany({ name: companyName });
       setCompanyName('');
       setMessage('Company created. You can now assign an employer account.');
-      void load();
+      await load();
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Unable to create company.');
+    } finally {
+      setBusy(false);
     }
   };
   const addEmployer = async (event: React.FormEvent) => {
     event.preventDefault();
     setError('');
     setMessage('');
+    setBusy(true);
     try {
       await createEmployer({ ...employer, company_id: Number(employer.company_id) });
       setEmployer({ name: '', email: '', password: '', password_confirmation: '', company_id: '' });
-      setMessage('Employer account created and assigned to its company.');
-      void load();
+      setMessage(
+        'Employer account created. They can sign in with the email and password you assigned.',
+      );
+      await load();
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Unable to create employer.');
+    } finally {
+      setBusy(false);
     }
   };
+  const manage = async (account: Employer, action: 'status' | 'remove') => {
+    const prompt =
+      action === 'remove'
+        ? `Remove ${account.name} (${account.email})? Sign-in access will end. Jobs and applications will be retained. This email will remain reserved.`
+        : `Suspend ${account.name}? They will be signed out and unable to sign in until reactivated.`;
+    if ((action === 'remove' || account.is_active) && !window.confirm(prompt)) return;
+    setBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      if (action === 'remove') await removeEmployer(account.id);
+      else await updateEmployer(account.id, { is_active: !account.is_active });
+      setMessage(
+        action === 'remove'
+          ? 'Employer account removed.'
+          : account.is_active
+            ? 'Employer suspended.'
+            : 'Employer activated. They can sign in again.',
+      );
+      await load();
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : 'Unable to update account.');
+    } finally {
+      setBusy(false);
+    }
+  };
+  const filtered = employers.filter(
+    (account) =>
+      `${account.name} ${account.email} ${account.company ?? ''}`
+        .toLowerCase()
+        .includes(query.toLowerCase()) &&
+      (status === 'all' || (status === 'active') === account.is_active),
+  );
   return (
     <main className="dashboard-content">
       <div className="dashboard-title">
@@ -62,8 +121,26 @@ export function AdminAccessPage() {
           </p>
         </div>
       </div>
-      {error && <p className="auth-error">{error}</p>}
-      {message && <p className="success-message">{message}</p>}
+      <AdminUsers />
+      {error && (
+        <div role="alert">
+          <p className="auth-error">{error}</p>
+          <button
+            className="text-link"
+            onClick={() => {
+              setError('');
+              void load();
+            }}
+          >
+            Reload accounts
+          </button>
+        </div>
+      )}
+      {message && (
+        <p className="success-message" role="status">
+          {message}
+        </p>
+      )}
       <div className="dashboard-grid">
         <section className="panel">
           <h2>Create company</h2>
@@ -72,9 +149,12 @@ export function AdminAccessPage() {
               value={companyName}
               onChange={(event) => setCompanyName(event.target.value)}
               placeholder="Company name"
+              aria-label="Company name"
               required
             />
-            <Button type="submit">Create company</Button>
+            <Button type="submit" disabled={busy || loading}>
+              Create company
+            </Button>
           </form>
         </section>
         <section className="panel">
@@ -84,16 +164,19 @@ export function AdminAccessPage() {
               value={employer.name}
               onChange={(event) => setEmployer({ ...employer, name: event.target.value })}
               placeholder="Employer name"
+              aria-label="Employer name"
               required
             />
             <input
               value={employer.email}
               onChange={(event) => setEmployer({ ...employer, email: event.target.value })}
               placeholder="Employer email"
+              aria-label="Employer email"
               type="email"
               required
             />
             <select
+              aria-label="Assign a company"
               value={employer.company_id}
               onChange={(event) => setEmployer({ ...employer, company_id: event.target.value })}
               required
@@ -109,6 +192,8 @@ export function AdminAccessPage() {
               value={employer.password}
               onChange={(event) => setEmployer({ ...employer, password: event.target.value })}
               placeholder="Temporary password (12+ chars)"
+              aria-label="Employer password"
+              autoComplete="new-password"
               type="password"
               minLength={12}
               required
@@ -119,22 +204,101 @@ export function AdminAccessPage() {
                 setEmployer({ ...employer, password_confirmation: event.target.value })
               }
               placeholder="Confirm temporary password"
+              aria-label="Confirm employer password"
+              autoComplete="new-password"
               type="password"
               minLength={12}
               required
             />
-            <Button type="submit" disabled={!companies.length}>
+            <small>
+              Use at least 12 characters with uppercase, lowercase, and a number. Share these
+              credentials securely with the employer.
+            </small>
+            <Button type="submit" disabled={!companies.length || busy || loading}>
               Create employer
             </Button>
           </form>
         </section>
       </div>
+      <section className="panel account-panel" aria-busy={loading || busy}>
+        <h2>Employer accounts</h2>
+        <div className="auth-form account-filters">
+          <input
+            aria-label="Search employer accounts"
+            placeholder="Search name, email, or company"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          <select
+            aria-label="Filter account status"
+            value={status}
+            onChange={(event) => setStatus(event.target.value)}
+          >
+            <option value="all">All statuses</option>
+            <option value="active">Active</option>
+            <option value="suspended">Suspended</option>
+          </select>
+        </div>
+        {loading ? (
+          <p role="status">Loading accounts…</p>
+        ) : filtered.length ? (
+          <div className="table">
+            {filtered.map((account) => (
+              <div className="account-row" key={account.id}>
+                <div>
+                  <b>{account.name}</b>
+                  <small>{account.email}</small>
+                </div>
+                <div>
+                  <span>{account.company ?? 'No company assigned'}</span>
+                  <small>{account.is_active ? 'Active' : 'Suspended'}</small>
+                </div>
+                <div className="account-actions">
+                  <Button disabled={busy} onClick={() => setEditing(account)}>
+                    Edit / reset password
+                  </Button>
+                  <Button disabled={busy} onClick={() => void manage(account, 'status')}>
+                    {account.is_active ? 'Suspend' : 'Activate'}
+                  </Button>
+                  <Button
+                    className="button-danger"
+                    disabled={busy}
+                    onClick={() => void manage(account, 'remove')}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            title={employers.length ? 'No matching accounts' : 'No employer accounts yet'}
+            text="Create an employer above or adjust your filters."
+          />
+        )}
+      </section>
+      {editing && (
+        <EmployerEditor
+          key={editing.id}
+          account={editing}
+          companies={companies}
+          onCancel={() => setEditing(null)}
+          onSaved={async () => {
+            setEditing(null);
+            setMessage(
+              'Employer account updated. Credential or company changes require a new sign-in.',
+            );
+            await load();
+          }}
+        />
+      )}
       <section className="panel">
         <h2>Companies</h2>
         {companies.length ? (
           <div className="table">
             {companies.map((company) => (
-              <div className="table-row" key={company.id}>
+              <div className="account-row" key={company.id}>
                 <b>{company.name}</b>
                 <small>Company ID: {company.id}</small>
                 <span>{company.employers_count ?? 0} employer account(s)</span>
@@ -152,123 +316,120 @@ export function AdminAccessPage() {
   );
 }
 
-export function EmployerJobsPage() {
+function EmployerEditor({
+  account,
+  companies,
+  onCancel,
+  onSaved,
+}: {
+  account: Employer;
+  companies: Company[];
+  onCancel: () => void;
+  onSaved: () => Promise<void>;
+}) {
   const [form, setForm] = useState({
-    title: '',
-    location: '',
-    workplace_type: 'Remote' as const,
-    employment_type: 'Full-time' as const,
-    salary_range: '',
-    description: '',
-    skills: '',
+    name: account.name,
+    email: account.email,
+    company_id: String(account.company_id ?? ''),
+    password: '',
+    password_confirmation: '',
   });
-  const [message, setMessage] = useState('');
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
-    setSubmitting(true);
+    setSaving(true);
     setError('');
-    setMessage('');
     try {
-      const job = await createJob({
-        ...form,
-        skills: form.skills
-          .split(',')
-          .map((item) => item.trim())
-          .filter(Boolean),
+      await updateEmployer(account.id, {
+        name: form.name,
+        email: form.email,
+        company_id: Number(form.company_id),
+        ...(form.password
+          ? { password: form.password, password_confirmation: form.password_confirmation }
+          : {}),
       });
-      setMessage(`“${job.title}” is now published.`);
-      setForm({
-        title: '',
-        location: '',
-        workplace_type: 'Remote',
-        employment_type: 'Full-time',
-        salary_range: '',
-        description: '',
-        skills: '',
-      });
-    } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : 'Unable to publish job.');
+      await onSaved();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Unable to save account.');
     } finally {
-      setSubmitting(false);
+      setSaving(false);
     }
   };
   return (
-    <main className="dashboard-content">
-      <div className="dashboard-title">
-        <div>
-          <h1>Post a job</h1>
-          <p>Roles are published under the company assigned by your administrator.</p>
-        </div>
-      </div>
-      {error && <p className="auth-error">{error}</p>}
-      {message && <p className="success-message">{message}</p>}
-      <section className="panel">
-        <form className="auth-form" onSubmit={(event) => void submit(event)}>
+    <section className="panel account-panel" aria-labelledby="edit-employer-heading">
+      <h2 id="edit-employer-heading">Edit {account.name}</h2>
+      <form className="auth-form" onSubmit={(event) => void submit(event)}>
+        <label>
+          Name
           <input
-            value={form.title}
-            onChange={(event) => setForm({ ...form, title: event.target.value })}
-            placeholder="Job title"
+            autoFocus
             required
+            maxLength={120}
+            value={form.name}
+            onChange={(event) => setForm({ ...form, name: event.target.value })}
           />
+        </label>
+        <label>
+          Email
           <input
-            value={form.location}
-            onChange={(event) => setForm({ ...form, location: event.target.value })}
-            placeholder="Location"
+            type="email"
             required
+            value={form.email}
+            onChange={(event) => setForm({ ...form, email: event.target.value })}
           />
-          <div className="form-row">
-            <select
-              value={form.workplace_type}
-              onChange={(event) =>
-                setForm({
-                  ...form,
-                  workplace_type: event.target.value as typeof form.workplace_type,
-                })
-              }
-            >
-              <option>Remote</option>
-              <option>Hybrid</option>
-              <option>On-site</option>
-            </select>
-            <select
-              value={form.employment_type}
-              onChange={(event) =>
-                setForm({
-                  ...form,
-                  employment_type: event.target.value as typeof form.employment_type,
-                })
-              }
-            >
-              <option>Full-time</option>
-              <option>Part-time</option>
-              <option>Contract</option>
-              <option>Internship</option>
-            </select>
-          </div>
-          <input
-            value={form.salary_range}
-            onChange={(event) => setForm({ ...form, salary_range: event.target.value })}
-            placeholder="Salary range (optional)"
-          />
-          <input
-            value={form.skills}
-            onChange={(event) => setForm({ ...form, skills: event.target.value })}
-            placeholder="Skills, separated by commas"
-          />
-          <textarea
-            value={form.description}
-            onChange={(event) => setForm({ ...form, description: event.target.value })}
-            placeholder="Describe the role, responsibilities, and requirements"
-            rows={8}
+        </label>
+        <label>
+          Company
+          <select
             required
+            value={form.company_id}
+            onChange={(event) => setForm({ ...form, company_id: event.target.value })}
+          >
+            <option value="">Assign a company</option>
+            {companies.map((company) => (
+              <option key={company.id} value={company.id}>
+                {company.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          New password (optional)
+          <input
+            type="password"
+            autoComplete="new-password"
+            minLength={12}
+            value={form.password}
+            onChange={(event) => setForm({ ...form, password: event.target.value })}
           />
-          <Button type="submit" disabled={submitting}>
-            {submitting ? 'Publishing…' : 'Publish job'}
-          </Button>
-        </form>
-      </section>
-    </main>
+        </label>
+        <small>
+          Leave blank to keep the current password. New passwords need 12 characters, uppercase,
+          lowercase, and a number.
+        </small>
+        <label>
+          Confirm new password
+          <input
+            type="password"
+            autoComplete="new-password"
+            required={!!form.password}
+            value={form.password_confirmation}
+            onChange={(event) => setForm({ ...form, password_confirmation: event.target.value })}
+          />
+        </label>
+        {error && (
+          <p className="auth-error" role="alert">
+            {error}
+          </p>
+        )}
+        <Button type="submit" disabled={saving}>
+          {saving ? 'Saving…' : 'Save changes'}
+        </Button>
+        <Button type="button" disabled={saving} onClick={onCancel}>
+          Cancel
+        </Button>
+      </form>
+    </section>
   );
 }

@@ -1,6 +1,7 @@
 import { Icon } from '../common/Icon';
 import { Badge, Button } from '../common/Ui';
 import type { Job } from '../../types';
+import { Link } from 'react-router-dom';
 
 export function JobCard({ job, onOpen }: { job: Job; onOpen: () => void }) {
   return (
@@ -8,9 +9,9 @@ export function JobCard({ job, onOpen }: { job: Job; onOpen: () => void }) {
       <div className="company-logo violet">{job.company[0]}</div>
       <div className="job-copy">
         <div className="job-heading">
-          <button className="job-link" onClick={onOpen}>
+          <Link className="job-link" to={`/jobs/${job.slug}`}>
             {job.title}
-          </button>
+          </Link>
           {job.posted.includes('hour') && <Badge tone="accent">New</Badge>}
         </div>
         <p className="job-company">{job.company}</p>

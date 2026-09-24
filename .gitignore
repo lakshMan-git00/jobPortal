@@ -50,3 +50,8 @@ pnpm-debug.log*
 /Backend/storage/*.key
 /Backend/storage/pail
 /Backend/database/*.sqlite
+
+
+# implementation files
+implementations.md
+DEPLOYMENT.md
